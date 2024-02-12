@@ -1,0 +1,55 @@
+
+Basic stats
+
+# 300 paidoff, 100 collection, 100 paid of after collection
+-- 60% pay off, 40% overdue
+
+
+# insight: 272 30-day terms, 207 15-day terms, 21 7-day terms
+-- most loan are made in 15(41.4%) or 30 days(54.4%) term
+# what are the age, edu difference in each term?
+# what are the ratio of overdue in each type of loan term?
+
+
+
+# insight: College, high School or below are extremely large, with bachelor lower, and master or above extremely small
+
+# insight: the effective date is centered around 11 Sep 2016
+
+# insight: age is centered on 28-30
+
+
+# Null Hypothesis1: No significant difference in age distribution between different loan_status
+
+
+# insight: the distribution of PAIDOFF AND PaidOff after collection are similar,
+# with college education being the dominant, and high school or below and bechalor comes after
+# whilst master or above being extremely rare in all group, which resembles the base rate in general population
+# but in COLLECTION group, high school or below education level becomes the dominant
+
+
+
+# insight: distribution of age is somewhat similar but there is no spike at around 35 in COLLECTION group
+
+
+# insight: past due days are on average 36.01 days
+# 29.3 standard deviations, quite large
+# consider the fact that terms are mostly 15, 30 days
+# the past due days are quite long
+
+
+
+# insight : if people pay defaulted loan, some pay it quickly (within 10 days of default),
+# others do not pay it until compulsory collection
+# note that there is a small increase at 20 + for loan of 30-day term
+
+
+# insight: total principal collected on Tuesdays and Fridays are really high compared to other days
+
+
+
+
+
+# insight: number of male loan borrowers is way larger than number of female borrowers
+# insight: males take up more portion of Collection and Paid After Collection
+--> Hypothesis: Females tend to overdue less on loans

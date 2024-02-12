@@ -1,0 +1,313 @@
+---
+title: "Exploratory Data Analysis in Loan Data dataset"
+author: "PhuaJunYu"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+  This is an R Markdown document to showcase my work in performing an exploratory data analysis on the [Loan Data](https://www.kaggle.com/datasets/zhijinzhai/loandata) dataset.
+
+The main goal is to explore the dataset, look for trends, patterns, and derive insights. See if anything interesting comes up and try to suggest some actions based on the derived insights.
+
+## Problems with the data
+
+1. Lack of demographic data, only age, education and gender info are available
+
+2. Only data in Sep to Nov in 2016, can't derive any seasonal difference or trends from it.
+
+3. Also the time-effectiveness of the data is questionable as this analysis is carried out in Feb 2024.
+
+4. The data is relatively small, with only 500 rows of data.
+
+5. From the similarity of loan capital(mean 943.2, standard deviation 115.2403), it seems that this data only represents a fraction of loan services provided.
+
+## Data Inspection
+```{r echo=FALSE, message=FALSE, results='hide',warning=FALSE}
+library(tidyr)
+library(dplyr)
+library(gridExtra)
+library(ggplot2)
+library(lubridate)
+
+
+# this is script to generate
+# univariate data vizs R scripts for columns
+# with in a dataframe
+univariateViz <- function(filePath,nCols){
+  data <- read.csv(filePath)
+  dfName <- gsub("*\\\\","",filePath)
+  dfName <- gsub(".csv","","dfName")
+  print(paste("dfName: ",dfName,sep=""))
+  cols <- colnames(data)
+  for(k in 1:length(cols)){
+    cols[k] <- gsub("\\.","_",cols[k])
+  }
+  colnames(data) <- cols
+  colnames(data)
+
+  # evaluate each column
+  i = 0
+  lines <- c()
+  for(col in cols){
+    print(col)
+  }
+
+  for(col in cols){
+    line <- paste("p",i," <- ggplot(data) ",sep="")
+    subLine <- "ggplot(data) "
+    print(col)
+    # remove NAs, null values
+    t <-  data[[col]]
+    t <- t[!is.na(t)]
+    t <- t[!is.null(t)]
+
+    # check if is discrete values that have small no of unique values
+    uni_val <- length(unique(t))
+    print(paste(col,"  ","UNIQUE values: ",uni_val))
+
+    if(uni_val<8){
+      # use bar chart
+      line <- paste(line,"+ geom_bar(aes(x=", col,",fill=",col,"),stat=\"count\")",sep="")
+
+      subLine <- paste(subLine,"+ geom_bar(aes(x=", col,",fill=",col,"),stat=\"count\")",sep="")
+
+      lines <- append(lines,line)
+
+      # print(noquote(line))
+      # print(noquote(subLine))
+      eval(parse(text=line))
+
+      i <- i + 1
+    }else if(is.numeric(t)){
+      # use histogram
+      line <- paste(line,"+ geom_histogram(aes(x=", col,"))",sep="")
+      subLine <- paste(subLine,"+ geom_histogram(aes(x=", col,"))",sep="")
+      lines <- append(lines,line)
+      # print(noquote(line))
+      # print(noquote(subLine))
+      eval(parse(text=line))
+
+      i <- i + 1
+
+    }
+
+    line <- ""
+  }
+
+  gridLine <- r"(grid.arrange()"
+  for(j in 1:i-1){
+    gridLine <- paste(gridLine,"p",j,", ",sep="");
+  }
+  gridLine <- paste(gridLine,"ncol = ", nCols,")",sep="");
+  print(noquote(lines))
+  print(noquote(gridLine))
+  eval(parse(text=gridLine))
+}
+
+```
+
+Check the columns
+
+```{r} 
+
+# load the data
+loan_data <- read.csv(r"(D:\Download\LoanData\Loan payments data.csv)")
+# check basic info & structure
+colnames(loan_data)
+
+```
+Look into the data
+```{r}
+head(loan_data)
+glimpse(loan_data)
+```
+
+
+
+## Data Cleaning
+
+As the data is small, a manual inspection in MS Excel was carried out to check issues in the data. And it turns out that the data has very little problems.
+
+
+No duplicates found.
+```{r}
+# check for duplicates, null values and NAs
+sum(duplicated(loan_data$Loan_ID))
+sum(duplicated(loan_data))
+```
+
+No null values found.
+
+```{r cars}
+# check for NULLs
+for(col in colnames(loan_data)){
+  print(paste(col,' NA:',sum(is.null(loan_data[col]))))
+}
+```
+
+Check for NA/blank values
+
+```{r}
+# check for NAs
+for(col in colnames(loan_data)){
+  print(paste(col,' NA:',sum(is.na(loan_data[col]))))
+}
+
+```
+
+There are 300 NAs in past_due_days, maybe because those who paid on time will not be recorded for this data.
+Check:
+```{r}
+print(sum(loan_data$loan_status=='PAIDOFF'))
+print(sum(loan_data$loan_status=='PAIDOFF' & is.na(loan_data$past_due_days)))
+```
+300 records of paying loan before due, matched with the NAs. 
+
+## Data Analysis
+
+First check on each columns
+```{r}
+loan_data %>%
+  group_by(loan_status) %>%
+  summarize(count=n())
+
+loan_data %>%
+  group_by(terms) %>%
+  summarize(count=n())
+
+
+
+
+```
+#### Some Basic stats:
+
+-  300(60%) paidoff, 100(20%) collection, 100(20%) paid off after putting into collection
+
+-  272(54.4%) 30-day terms, 207(54.4%) 15-day terms, 21(4.2%) 7-day terms. Most loan are made in 15 or 30 day term.
+
+- Average principal involved: 943.2, standard deviation in principal: 115.2403
+
+- The distribution of education level shows that College, high School level or below are common, with bachelor level less common, and master or above level of education is extremely rare.
+
+- The effective date is centered around & close to 11 Sep 2016
+
+```{r warning=FALSE, echo=FALSE, fig.align='center'}
+ggplot(loan_data) +
+  geom_histogram(aes(x=as.Date(effective_date,"%m/%d/%Y")),stat="count",fill='#febe93') +
+  xlab("Effective Date") +
+  ylab("Date Count")
+
+```
+
+- Age is centered around 25-30
+
+```{r warning=FALSE, echo=FALSE, fig.align='center'}
+ggplot(loan_data) +
+  geom_histogram(aes(x=age),stat="count",fill='#febe93') +
+  xlab("Age") +
+  ylab("Age Count")
+```
+
+**Pattern 1:** Female ratio is higher in the group of borrowers who paid before due date while Male takes up more portion of Collection and Paid After Collection
+
+  - Female borrowers are more likely to pay back on time compared to male borrowers.
+```{r echo=FALSE, fig.align="center"}
+ggplot(loan_data) +
+  geom_bar(aes(x=Gender,fill=Gender),stat='count') +
+  facet_grid(loan_status ~ .) +
+  theme(strip.text.y = element_text(angle = 0)) + scale_fill_manual(values=c("#1861c1","#febe93" , "#cd5e0d"))
+
+
+
+```
+
+**Pattern 3:** The distribution education in status PAIDOFF and COLLECTION_PAIDOFF are similar, with college education being the dominant, and high school or below and Bachelor comes after, whilst master or above being extremely rare in all group.But in COLLECTION group, high school or below education level becomes the dominant
+
+```{r echo=FALSE, fig.align="center"}
+ggplot(loan_data) +
+  geom_bar(aes(x=education),stat='count',fill='#febe93') +
+  facet_grid(loan_status ~ .) +
+  theme(strip.text.y = element_text(angle = 0)) 
+
+```
+
+
+**Pattern 4:**  If people pay defaulted loan, some pay it quickly (within 10 days of default),others will most likely do not pay it at least within the next 60 days.
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align="center"}
+ggplot(loan_data)+
+  geom_freqpoly(aes(x=past_due_days,color=loan_status),size=1) +
+  facet_grid(terms ~.) +
+  xlab("Days Past Due Date") +
+  theme(strip.text.y = element_text(angle = 0)) + scale_color_manual(values=c("#1861c1","#febe93" , "#cd5e0d"))
+
+```
+
+**Pattern 5:** longer terms, higher probability of overdue
+```{r fig.align="center"}
+
+terms <- c(7,15,30)
+for(t in terms){
+  r1 <- round(sum(loan_data$terms==t & loan_data$Gender=="male")/sum(loan_data$terms==t),2)
+  r2 <- round(sum(loan_data$terms==t & loan_data$Gender=="female")/sum(loan_data$terms==t),2)
+  print(noquote(paste("The group of term ",t," consist of ",r1*100,"% Male, ", r2*100,"% Female")))
+}
+
+```
+
+
+**Pattern 6:** People borrow less on Tue,Wed,Thu,Fri, most on Sun and Mon,but poeple who borrowed on Tue,Wed,Thu will almost never overdue their loan
+```{r fig.align="center"}
+loan_data$effective_day_week <- wday(as.Date(loan_data$effective_date,"%m/%d/%Y"),week_start = 1)
+
+days <- sort(unique(loan_data$effective_day_week))
+for(d in days){
+  r1 <- round(sum(loan_data$effective_day_week==d & loan_data$loan_status=="PAIDOFF")/sum(loan_data$effective_day_week==d),2)
+  r2 <- round(sum(loan_data$effective_day_week==d & loan_data$loan_status=="COLLECTION_PAIDOFF")/sum(loan_data$effective_day_week==d),2)
+  r3 <- round(sum(loan_data$effective_day_week==d & loan_data$loan_status=="COLLECTION")/sum(loan_data$effective_day_week==d),2)
+  print(noquote(paste("In loans borrowed on ",d," consist of ",r1*100,"% COLLECTION, ", r2*100,"% COLLECTION_PAIDOFF, ",r3*100,"% PAIDOFF")))
+
+}
+```
+
+```{r echo=FALSE, fig.align='center'}
+ggplot(loan_data) +
+  geom_bar(aes(x=effective_day_week,fill=loan_status),stat="count") + scale_fill_manual(values=c("#1861c1","#febe93" , "#cd5e0d"))
+
+
+
+
+```
+
+
+## Preliminary Conclusions
+
+1. The longer the term of loan, the higher the chance of the borrower not repaying the loan before due date.
+
+2.	People with higher education level tend to pay back loan more on time.
+
+3.	Females tend to pay back loan more on time.
+
+4.	Age does not seem to matter much on how likely a borrower is to pay back loan later then due date.
+
+5.	People who borrowed on Tue, Wed, Thu have a extremely low probability of not repaying on time.
+
+## Suggested Actions
+
+1. Take into consideration factors of loan term, gender, education level, the day in week when the borrowing happens when considering the interest rate and approval of a loan.
+
+2. Consider taking actions if a borrower does not pay within 10days after being put into collection. As there is a high chance that he/she will not repay it anymore.
+
+
+## Problems with the analysis + further actions
+
+1. Look into behaviour of borrowers not repaying debt if they do not pay it within 10 days of being put into collection.
+
+2. Perform hypotheses testing on causal relationships of gender, education level, loan term, day of borrowing to whether the borrower will pay back on time.
+
+3. College, high School or below are extremely large, with bachelor lower, and master or above extremely small. Compare this fact with the population base rate, and see if anything interesting comes up.
+
+<br>
